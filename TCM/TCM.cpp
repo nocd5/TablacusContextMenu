@@ -150,7 +150,9 @@ BOOL PopupContextMenu(HWND hwnd, LPTSTR *lplpszArgs, int nArgs, int nStart)
 			if (lplpszArgs[i][n - 1] == '"') {
 				lplpszArgs[i][n - 1] = '\\';
 			}
-			apidlFull[npidl] = ILCreateFromPath(lplpszArgs[i]);
+			TCHAR szFullpath[MAX_PATH];
+			GetFullPathName(lplpszArgs[i], MAX_PATH, szFullpath, NULL);
+			apidlFull[npidl] = ILCreateFromPath(szFullpath);
 			if (apidlFull[npidl]) {
 				if (!pSF) {
 					SHBindToParent(apidlFull[npidl], IID_PPV_ARGS(&pSF), &apidl[npidl]);
@@ -411,14 +413,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_CREATE:
 		GetWindowRect(hWnd, &g_rc);
 		MoveWindow(hWnd, -32768, -32768, 400, 120, TRUE);
-		ShowWindow(hWnd, g_nCmdShow);
-        DragAcceptFiles(hWnd, TRUE);
 		 
 		int nArgs;
 		LPTSTR *lplpszArgs;
 		lplpszArgs = CommandLineToArgvW(GetCommandLine(), &nArgs);
 		if (!PopupContextMenu(hWnd, lplpszArgs, nArgs, 1)) {
-			g_uTimerId2 = SetTimer(hWnd, TCMT_SHOW, 1000, NULL);
+			g_uTimerId2 = SetTimer(hWnd, TCMT_CLOSE, 50, NULL);
 		}
 		LocalFree(lplpszArgs);
 		break;
@@ -458,6 +458,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		EndPaint(hWnd, &ps);
 		break;
 	case WM_DESTROY:
+		UnregisterHotKey(hWnd, MAKEWORD('H', 0));
+		UnregisterHotKey(hWnd, MAKEWORD('J', 0));
+		UnregisterHotKey(hWnd, MAKEWORD('K', 0));
+		UnregisterHotKey(hWnd, MAKEWORD('L', 0));
+
 		PostQuitMessage(0);
 		break;
 	case WM_TIMER:
@@ -485,6 +490,29 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	//Menu
+	case WM_HOTKEY:
+		{
+			switch (wParam)
+			{
+				case MAKEWORD('H', 0):
+					keybd_event(VK_LEFT, 0, 0, 0 );
+					keybd_event(VK_LEFT, 0, KEYEVENTF_KEYUP, 0);
+					break;
+				case MAKEWORD('J', 0):
+					keybd_event(VK_DOWN, 0, 0, 0 );
+					keybd_event(VK_DOWN, 0, KEYEVENTF_KEYUP, 0);
+					break;
+				case MAKEWORD('K', 0):
+					keybd_event(VK_UP, 0, 0, 0 );
+					keybd_event(VK_UP, 0, KEYEVENTF_KEYUP, 0);
+					break;
+				case MAKEWORD('L', 0):
+					keybd_event(VK_RIGHT, 0, 0, 0 );
+					keybd_event(VK_RIGHT, 0, KEYEVENTF_KEYUP, 0);
+					break;
+			}
+			break;
+		}
 	case WM_MEASUREITEM:
 	case WM_INITMENUPOPUP:
 	case WM_DRAWITEM:
@@ -492,6 +520,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_HELP:
 	case WM_MENUCHAR:
 	case WM_INITMENU:
+		// Vi Like Key Bind
+		RegisterHotKey(hWnd, MAKEWORD('H', 0), 0, 'H');
+		RegisterHotKey(hWnd, MAKEWORD('J', 0), 0, 'J');
+		RegisterHotKey(hWnd, MAKEWORD('K', 0), 0, 'K');
+		RegisterHotKey(hWnd, MAKEWORD('L', 0), 0, 'L');
+
 		LRESULT lResult;
 		lResult = 0;
 		if (g_pCCM) {
@@ -539,7 +573,7 @@ CtcmContextMenu::~CtcmContextMenu()
 		m_pContextMenu->Release();
 	}
 	g_pCCM = NULL;
-	g_uTimerId = SetTimer(m_hwnd, TCMT_CLOSE, 1000, NULL);
+	g_uTimerId = SetTimer(m_hwnd, TCMT_CLOSE, 50, NULL);
 }
 
 STDMETHODIMP CtcmContextMenu::QueryInterface(REFIID riid, void **ppvObject)
